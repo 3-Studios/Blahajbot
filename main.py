@@ -5,6 +5,7 @@ import random
 from typing import Optional
 import modules.haj_data as haj_data
 import os
+import modules.errors as errors
 
 if os.getenv('TEST_GUILD'):
     TEST_GUILD = discord.Object(os.environ['TEST_GUILD'])
@@ -71,6 +72,8 @@ async def on_message(message : discord.Message):
     elif 'boop' in message.content.lower() and message.content.startswith('<:') and message.content.endswith('>'):
         await message.reply(emojis.blahajar['blahaj_boop'])
 
+
+
 #
 # COMMANDS
 #
@@ -80,61 +83,65 @@ async def on_message(message : discord.Message):
 async def stats(interaction: discord.Interaction,  
                member: Optional[discord.Member]):
         
-        if member is None:
-            member = interaction.user
+    if member is None:
+        member = interaction.user
 
-        user_data = client.haj_data.get_data(member)
+    user_data = client.haj_data.get_data(member)
 
-        embed = discord.Embed(
-                color=discord.Color.purple(),
-                title=f"Stats for {str(member)}'s blahaj"
-        )
+    embed = discord.Embed(
+            color=discord.Color.purple(),
+            title=f"Stats for {str(member)}'s blahaj"
+    )
 
-        if user_data is None:
-            embed.color = discord.Color.red()
-            embed.title = "Error"
-            embed.description = "User has no blahaj."
-            await interaction.response.send_message(embed=embed, ephemeral=True)
-            return
-        
-        embed.add_field(name="Name", 
-                        value=f"{user_data.get('haj_profile')} {user_data.get('name')}", 
-                        inline=False)
-        embed.add_field(name="Items", 
-                        value=f"🐟 {user_data.get('fish', 0)} \
-                        \n🍫 {user_data.get('chocolate_bars', 0)} \
+    if user_data is None:
+        embed.color = discord.Color.red()
+        embed.title = "Error"
+        embed.description = "User has no blahaj."
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+        return
+    
+    embed.add_field(name="Name", 
+                    value=f"{user_data.get('haj_profile')} {user_data.get('name')}", 
+                    inline=False)
+    embed.add_field(name="Stats",
+                    value=f"Love - {user_data.get('love', 0)} \
+                        \nSize - {user_data.get('size', 0)}",
+                    inline=False)
+    embed.add_field(name="Food" , 
+                    value=f"🐟 {user_data.get('fish', 0)} \
+                        \n🍫 {user_data.get('chocolate', 0)} \
                         \n{emojis.blahajar['transphobe >:(']} {user_data.get('transphobes', 0)}", 
-                        inline=False)
-        
-        await interaction.response.send_message(embed=embed)
+                    inline=False)
+    
+    await interaction.response.send_message(embed=embed)
 
 @client.tree.command(description="Adopt a blahaj!")
 async def adopt(interaction: discord.Interaction,
-                name : str):
-        
-        embed = discord.Embed(
-                color=discord.Color.purple(),
-                title=f"You adopted a blahaj!",
-                description=f"{emojis.blahajar['blahaj']} {name}"
-        )
-        
-        if len(name) > 32:
-            embed.color = discord.Color.red()
-            embed.title = "Error"
-            embed.description = "Name too long."
-            await interaction.response.send_message(embed=embed, ephemeral=True)
-            return
-        elif client.haj_data.get_data(interaction.user) is not None:
-            embed.color = discord.Color.red()
-            embed.title = "Error"
-            embed.description = "You already have a blahaj!"
-            await interaction.response.send_message(embed=embed, ephemeral=True)
-            return
-        
-        client.haj_data.sync_changes(interaction.user, haj_data.user_data(name=name))
-        
-        
-        await interaction.response.send_message(embed=embed)
+            name : str):
+    
+    embed = discord.Embed(
+            color=discord.Color.purple(),
+            title=f"You adopted a blahaj!",
+            description=f"{emojis.blahajar['blahaj']} {name}"
+    )
+    
+    if len(name) > 32:
+        embed.color = discord.Color.red()
+        embed.title = "Error"
+        embed.description = "Name too long."
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+        return
+    elif client.haj_data.get_data(interaction.user) is not None:
+        embed.color = discord.Color.red()
+        embed.title = "Error"
+        embed.description = "You already have a blahaj!"
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+        return
+    
+    client.haj_data.sync_changes(interaction.user, haj_data.user_data(name=name))
+    
+    
+    await interaction.response.send_message(embed=embed)
 
 
 @client.tree.command(description="Eat some food.")
@@ -142,45 +149,65 @@ async def eat(interaction: discord.Interaction,
                 food : str,
                 amount : int = 1):
         
-        foods = {
-            'fish' : 'fish',
-            'chocolate' : 'chocolate_bars',
-            'transphobes' : 'transphobes'
+        food_effects = {
+            'fish' : (1, 1),            # First element is change in size
+            'chocolate' : (0, 3),       # Second is change in love
+            'transphobes' : (4, 0)
         }
-        
+
+        food_effect = food_effects.get(food, None)
+
+        user_data = client.haj_data.get_data(interaction.user)
+
+        if user_data is None:
+            raise errors.NoBlahaj()
+        elif food_effect is None:
+            raise errors.InvalidFood()
+        elif amount < 1:
+            raise errors.InvalidAmount()
+        elif user_data.get(food, 0) < amount:
+            raise errors.TooLittleOfFood()
+
         embed = discord.Embed(
                 color=discord.Color.purple(),
                 title=f"Ate {amount} {food}.",
                 description="yums"
         )
-
-        user_data = client.haj_data.get_data(interaction.user)
-
-        if user_data is None:
-            embed.color = discord.Color.red()
-            embed.title = "Error"
-            embed.description = "You don't have a blahaj!"
-            await interaction.response.send_message(embed=embed, ephemeral=True)
-            return
-        elif food not in foods:
-            embed.color = discord.Color.red()
-            embed.title = "Error"
-            embed.description = "Invalid food!"
-            await interaction.response.send_message(embed=embed, ephemeral=True)
-            return
         
-        if user_data.get(foods[food], 0) < amount:
-            embed.color = discord.Color.red()
-            embed.title = "Error"
-            embed.description = "You don't have enough of the specified food!"
-            await interaction.response.send_message(embed=embed, ephemeral=True)
-            return
-        
-        user_data[foods[food]] = user_data.get(foods[food], 0) - amount
+        user_data[food] = user_data.get(food, 0) - amount
+        if food_effect[0]:
+            user_data['size'] = user_data.get('size', 0) + food_effect[0]
+            embed.description += f"\nSize increased by {food_effect[0]}."
+        if food_effect[1]:
+            user_data['love'] = user_data.get('love', 0) + food_effect[1]
+            embed.description += f"\nLove increased by {food_effect[1]}."
         client.haj_data.sync_changes(interaction.user, user_data)
 
         await interaction.response.send_message(embed=embed)
 
+@eat.error
+async def eat_error(interaction: discord.Interaction, 
+                    error: app_commands.AppCommandError):
+    embed = discord.Embed(
+            color=discord.Color.red(),
+            title="Error",
+            description="Something went wrong."
+        )
+    
+    if isinstance(error, errors.InvalidFood):
+        embed.description = "Invalid food."
+    elif isinstance(error, errors.TooLittleOfFood):
+        embed.description = "You don't have enough of that food."
+    elif isinstance(error, errors.InvalidAmount):
+        embed.description = "Invalid amount."
+    elif isinstance(error, errors.NoBlahaj):
+        embed.description = "You don't have a blahaj!"
 
-TOKEN = os.environ['BOT_TOKEN']
-client.run(TOKEN)
+    await interaction.response.send_message(embed=embed, ephemeral=True)
+
+
+TOKEN = os.getenv('BOT_TOKEN')
+if not TOKEN:
+    print("No 'BOT_TOKEN' environment variable found.")
+else:
+    client.run(TOKEN)
