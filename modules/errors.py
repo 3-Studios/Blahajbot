@@ -26,4 +26,6 @@ class TooLittleOfFood(TooLittleOfItem):
 # Very niche exceptions
 class AlreadyHaveBlahaj(BlahajBotError):
     pass
+class NameTooLong(BlahajBotError):
+    pass
 

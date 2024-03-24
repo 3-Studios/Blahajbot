@@ -19,13 +19,13 @@ class blajbot(discord.Client):
         self.haj_data = haj_data.blahaj_data('data/blahajar.json')
 
     async def setup_hook(self):
-                # Copies over to testing server
-               self.tree.copy_global_to(guild=TEST_GUILD)
-               
-               # Syncs all commands
-               await self.tree.sync(guild=None)    # Global commands take a while to register with discord.
-               await self.tree.sync(guild=TEST_GUILD)
-               print("synced commands")
+        # Copies over to testing server
+        self.tree.copy_global_to(guild=TEST_GUILD)
+        
+        # Syncs all commands
+        await self.tree.sync(guild=None)    # Global commands take a while to register with discord.
+        await self.tree.sync(guild=TEST_GUILD)
+        print("synced commands")
 
 
 intents = discord.Intents.default()
@@ -104,8 +104,8 @@ async def stats(interaction: discord.Interaction,
                     value=f"{user_data.get('haj_profile')} {user_data.get('name')}", 
                     inline=False)
     embed.add_field(name="Stats",
-                    value=f"Love - {user_data.get('love', 0)} \
-                        \nSize - {user_data.get('size', 0)}",
+                    value=f"Love ❤️ {user_data.get('love', 0)} \
+                        \nSize ⬆️ {user_data.get('size', 0)}",
                     inline=False)
     embed.add_field(name="Food" , 
                     value=f"🐟 {user_data.get('fish', 0)} \
@@ -115,9 +115,28 @@ async def stats(interaction: discord.Interaction,
     
     await interaction.response.send_message(embed=embed)
 
+@stats.error
+async def stats_error(interaction: discord.Interaction, 
+                      error: app_commands.AppCommandError):
+    embed = discord.Embed(
+        color=discord.Color.red(),
+        title="Error",
+        description="Something went wrong."
+    )
+        
+    if isinstance(error, errors.NoBlahajOthers):
+        embed.description = "That user has no blahaj."
+    
+    await interaction.response.send_message(embed=embed, ephemeral=True)
+
 @client.tree.command(description="Adopt a blahaj!")
 async def adopt(interaction: discord.Interaction,
             name : str):
+    
+    if len(name) > 32:
+        raise errors.NameTooLong()
+    elif client.haj_data.get_data(interaction.user) is not None:
+        raise errors.AlreadyHaveBlahaj()
     
     embed = discord.Embed(
             color=discord.Color.purple(),
@@ -125,65 +144,68 @@ async def adopt(interaction: discord.Interaction,
             description=f"{emojis.blahajar['blahaj']} {name}"
     )
     
-    if len(name) > 32:
-        embed.color = discord.Color.red()
-        embed.title = "Error"
-        embed.description = "Name too long."
-        await interaction.response.send_message(embed=embed, ephemeral=True)
-        return
-    elif client.haj_data.get_data(interaction.user) is not None:
-        embed.color = discord.Color.red()
-        embed.title = "Error"
-        embed.description = "You already have a blahaj!"
-        await interaction.response.send_message(embed=embed, ephemeral=True)
-        return
-    
     client.haj_data.sync_changes(interaction.user, haj_data.user_data(name=name))
     
     
     await interaction.response.send_message(embed=embed)
 
+@adopt.error
+async def adopt_error(interaction: discord.Interaction, 
+                      error: app_commands.AppCommandError):
+    embed = discord.Embed(
+        color=discord.Color.red(),
+        title="Error",
+        description="Something went wrong."
+    )
+        
+    if isinstance(error, errors.InvalidName):
+        embed.description = "Name too long (32 characters or less required)."
+    elif isinstance(error, errors.AlreadyHaveBlahaj):
+        embed.description = "You already have a blahaj!"
+    
+    await interaction.response.send_message(embed=embed, ephemeral=True)
+
 
 @client.tree.command(description="Eat some food.")
 async def eat(interaction: discord.Interaction,
-                food : str,
-                amount : int = 1):
-        
-        food_effects = {
-            'fish' : (1, 1),            # First element is change in size
-            'chocolate' : (0, 3),       # Second is change in love
-            'transphobes' : (4, 0)
-        }
+            food : str,
+            amount : int = 1):
+    
+    food_effects = {
+        'fish' : (1, 1),            # First element is change in size
+        'chocolate' : (0, 3),       # Second is change in love
+        'transphobes' : (4, 0)
+    }
 
-        food_effect = food_effects.get(food, None)
+    food_effect = food_effects.get(food, None)
 
-        user_data = client.haj_data.get_data(interaction.user)
+    user_data = client.haj_data.get_data(interaction.user)
 
-        if user_data is None:
-            raise errors.NoBlahaj()
-        elif food_effect is None:
-            raise errors.InvalidFood()
-        elif amount < 1:
-            raise errors.InvalidAmount()
-        elif user_data.get(food, 0) < amount:
-            raise errors.TooLittleOfFood()
+    if user_data is None:
+        raise errors.NoBlahaj()
+    elif food_effect is None:
+        raise errors.InvalidFood()
+    elif amount < 1:
+        raise errors.InvalidAmount()
+    elif user_data.get(food, 0) < amount:
+        raise errors.TooLittleOfFood()
 
-        embed = discord.Embed(
-                color=discord.Color.purple(),
-                title=f"Ate {amount} {food}.",
-                description="yums"
-        )
-        
-        user_data[food] = user_data.get(food, 0) - amount
-        if food_effect[0]:
-            user_data['size'] = user_data.get('size', 0) + food_effect[0]
-            embed.description += f"\nSize increased by {food_effect[0]}."
-        if food_effect[1]:
-            user_data['love'] = user_data.get('love', 0) + food_effect[1]
-            embed.description += f"\nLove increased by {food_effect[1]}."
-        client.haj_data.sync_changes(interaction.user, user_data)
+    embed = discord.Embed(
+            color=discord.Color.purple(),
+            title=f"Ate {amount} {food}.",
+            description="yums"
+    )
+    
+    user_data[food] = user_data.get(food, 0) - amount
+    if food_effect[0]:
+        user_data['size'] = user_data.get('size', 0) + food_effect[0]*amount
+        embed.description += f"\nSize ⬆️ increased by {food_effect[0]*amount}."
+    if food_effect[1]:
+        user_data['love'] = user_data.get('love', 0) + food_effect[1]*amount
+        embed.description += f"\nLove ❤️ increased by {food_effect[1]*amount}."
+    client.haj_data.sync_changes(interaction.user, user_data)
 
-        await interaction.response.send_message(embed=embed)
+    await interaction.response.send_message(embed=embed)
 
 @eat.error
 async def eat_error(interaction: discord.Interaction, 
