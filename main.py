@@ -7,6 +7,7 @@ import modules.haj_data as haj_data
 import os
 import modules.errors as errors
 
+
 if os.getenv('TEST_GUILD'):
     TEST_GUILD = discord.Object(os.environ['TEST_GUILD'])
 else:
@@ -100,12 +101,25 @@ async def stats(interaction: discord.Interaction,
         await interaction.response.send_message(embed=embed, ephemeral=True)
         return
     
+    size = user_data.get('size', 0)
+    blahaj_sizes = {
+        80 : "babyhaj",
+        160 : "tinyhaj",
+        550 : "smallhaj",
+        1000 : "normal haj",
+        1600 : "megahaj",
+        3000 : "colossalhaj"
+    }
+
+    blahaj_size = [key for key in blahaj_sizes.keys() if key <= (size+80)].pop()
+    blahaj_size = blahaj_sizes[blahaj_size]
+    
     embed.add_field(name="Name", 
                     value=f"{user_data.get('haj_profile')} {user_data.get('name')}", 
                     inline=False)
     embed.add_field(name="Stats",
                     value=f"Love ❤️ {user_data.get('love', 0)} \
-                        \nSize ⬆️ {user_data.get('size', 0)}",
+                        \nSize ⬆️ {(size/10)+8}cm ({blahaj_size})",
                     inline=False)
     embed.add_field(name="Food" , 
                     value=f"🐟 {user_data.get('fish', 0)} \
@@ -126,6 +140,8 @@ async def stats_error(interaction: discord.Interaction,
         
     if isinstance(error, errors.NoBlahajOthers):
         embed.description = "That user has no blahaj."
+    else:
+        print(error)
     
     await interaction.response.send_message(embed=embed, ephemeral=True)
 
@@ -199,7 +215,7 @@ async def eat(interaction: discord.Interaction,
     user_data[food] = user_data.get(food, 0) - amount
     if food_effect[0]:
         user_data['size'] = user_data.get('size', 0) + food_effect[0]*amount
-        embed.description += f"\nSize ⬆️ increased by {food_effect[0]*amount}."
+        embed.description += f"\nSize ⬆️ increased by {(food_effect[0]*amount)/10}cm."
     if food_effect[1]:
         user_data['love'] = user_data.get('love', 0) + food_effect[1]*amount
         embed.description += f"\nLove ❤️ increased by {food_effect[1]*amount}."
