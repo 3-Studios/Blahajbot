@@ -229,9 +229,10 @@ async def fish(interaction: discord.Interaction):
     if user_data is None:
         raise errors.NoBlahaj()
     
-    fish_gained = random.choices(range(1, 6), [0.4, 0.3, 0.15, 0.1, 0.05])[0]
+    fish_gained = random.choices(range(6), [0.1, 0.65, 0.1, 0.075, 0.05, 0.025])[0]
     chocolate_gained = random.choices(range(4), [0.8, 0.1, 0.07, 0.03])[0]
-    transphobes_gained = random.choices(range(2), [0.95, 0.05])[0]
+    transphobes_gained = random.choices(range(3), [0.95, 0.045, 0.005])[0]
+    total_gained = fish_gained+chocolate_gained+transphobes_gained
 
     embed = discord.Embed(
         color=discord.Color.purple(),
@@ -239,9 +240,14 @@ async def fish(interaction: discord.Interaction):
         description="You got:\n"
     )
 
-    user_data['fish'] = user_data.get('fish', 0) + fish_gained
-    embed.description += f"🐟 {fish_gained} \n"
-    
+    if total_gained == 0:
+        embed.description += "Nothing this time :("
+        await interaction.response.send_message(embed=embed)
+        return
+
+    if fish_gained:
+        user_data['fish'] = user_data.get('fish', 0) + fish_gained
+        embed.description += f"🐟 {fish_gained} \n"
     if chocolate_gained:
         user_data['chocolate'] = user_data.get('chocolate', 0) + chocolate_gained
         embed.description += f"🍫 {chocolate_gained}"
