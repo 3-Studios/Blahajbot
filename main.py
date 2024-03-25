@@ -38,6 +38,7 @@ async def on_ready():
     print(f'logged in as {client.user} (ID: {client.user.id})')
     await client.change_presence(activity=discord.Activity(type=discord.ActivityType.playing, name="with blahajar :3"))
 
+
 @client.event
 async def on_message(message : discord.Message):
     if message.author == client.user or message.author.bot:
@@ -220,6 +221,37 @@ async def eat(interaction: discord.Interaction,
 
     await interaction.response.send_message(embed=embed)
 
+
+@client.tree.command(description="Fish some food.")
+async def fish(interaction: discord.Interaction):
+    user_data = client.haj_data.get_data(interaction.user)
+
+    if user_data is None:
+        raise errors.NoBlahaj()
+    
+    fish_gained = random.choices(range(1, 6), [0.4, 0.3, 0.15, 0.1, 0.05])[0]
+    chocolate_gained = random.choices(range(4), [0.8, 0.1, 0.07, 0.03])[0]
+    transphobes_gained = random.choices(range(2), [0.95, 0.05])[0]
+
+    embed = discord.Embed(
+        color=discord.Color.purple(),
+        title="Fishing result",
+        description="You got:\n"
+    )
+
+    user_data['fish'] = user_data.get('fish', 0) + fish_gained
+    embed.description += f"🐟 {fish_gained} \n"
+    
+    if chocolate_gained:
+        user_data['chocolate'] = user_data.get('chocolate', 0) + chocolate_gained
+        embed.description += f"🍫 {chocolate_gained}"
+    if transphobes_gained:
+        user_data['transphobes'] = user_data.get('transphobes', 0) + transphobes_gained
+        embed.description += f"\n{emojis.blahajar['transphobe >:(']} {transphobes_gained}"
+    
+    client.haj_data.sync_changes(interaction.user, user_data)
+
+    await interaction.response.send_message(embed=embed)
 
 
 TOKEN = os.getenv('BOT_TOKEN')
