@@ -42,22 +42,6 @@ async def on_ready():
 async def on_message(message : discord.Message):
     if message.author == client.user or message.author.bot:
         return
-    
-    if random.randint(1, 10) == 1:
-        await message.add_reaction("🐟")
-        user_data = client.haj_data.get_data(message.author)
-
-        if user_data is not None:
-            user_data['fish'] = user_data.get('fish', 0) + 1
-            client.haj_data.sync_changes(message.author, user_data)
-
-    if random.randint(1, 50) == 1:
-        await message.add_reaction("🍫")
-        user_data = client.haj_data.get_data(message.author)
-
-        if user_data is not None:
-            user_data['chocolate_bars'] = user_data.get('chocolate_bars', 0) + 1
-            client.haj_data.sync_changes(message.author, user_data)
 
         
     responses = {
@@ -72,8 +56,52 @@ async def on_message(message : discord.Message):
         await message.reply(responses[message.content.lower()])
     elif 'boop' in message.content.lower() and message.content.startswith('<:') and message.content.endswith('>'):
         await message.reply(emojis.blahajar['blahaj_boop'])
+    
+
+    user_data = client.haj_data.get_data(message.author)
+
+    if user_data is None:
+        return
+
+    if random.randint(1, 10) == 1:
+        await message.add_reaction("🐟")
+            
+        user_data['fish'] = user_data.get('fish', 0) + 1
+        client.haj_data.sync_changes(message.author, user_data)
+
+    if random.randint(1, 50) == 1:
+        await message.add_reaction("🍫")
+        
+        user_data['chocolate'] = user_data.get('chocolate', 0) + 1
+        client.haj_data.sync_changes(message.author, user_data)
 
 
+@client.tree.error
+async def on_error(interaction: discord.Interaction, 
+                   error: app_commands.AppCommandError):
+    embed = discord.Embed(
+        color=discord.Color.red(),
+        title="Error"
+    )
+
+    if isinstance(error, errors.InvalidFood):
+        embed.description = "Invalid food."
+    elif isinstance(error, errors.TooLittleOfFood):
+        embed.description = "You don't have enough of that food."
+    elif isinstance(error, errors.InvalidAmount):
+        embed.description = "Invalid amount."
+    elif isinstance(error, errors.NoBlahaj):
+        embed.description = "You don't have a blahaj!"
+    elif isinstance(error, errors.NoBlahajOthers):
+        embed.description = "That user has no blahaj."
+    elif isinstance(error, errors.InvalidName):
+        embed.description = "Name too long (32 characters or less required)."
+    elif isinstance(error, errors.AlreadyHaveBlahaj):
+        embed.description = "You already have a blahaj!"
+    else:
+        print(error)
+
+    await interaction.response.send_message(embed=embed, ephemeral=True)
 
 #
 # COMMANDS
@@ -107,7 +135,7 @@ async def stats(interaction: discord.Interaction,
         160 : "tinyhaj",
         550 : "smallhaj",
         1000 : "normal haj",
-        1600 : "megahaj",
+        1750 : "megahaj",
         3000 : "colossalhaj"
     }
 
@@ -129,21 +157,6 @@ async def stats(interaction: discord.Interaction,
     
     await interaction.response.send_message(embed=embed)
 
-@stats.error
-async def stats_error(interaction: discord.Interaction, 
-                      error: app_commands.AppCommandError):
-    embed = discord.Embed(
-        color=discord.Color.red(),
-        title="Error",
-        description="Something went wrong."
-    )
-        
-    if isinstance(error, errors.NoBlahajOthers):
-        embed.description = "That user has no blahaj."
-    else:
-        print(error)
-    
-    await interaction.response.send_message(embed=embed, ephemeral=True)
 
 @client.tree.command(description="Adopt a blahaj!")
 async def adopt(interaction: discord.Interaction,
@@ -164,22 +177,6 @@ async def adopt(interaction: discord.Interaction,
     
     
     await interaction.response.send_message(embed=embed)
-
-@adopt.error
-async def adopt_error(interaction: discord.Interaction, 
-                      error: app_commands.AppCommandError):
-    embed = discord.Embed(
-        color=discord.Color.red(),
-        title="Error",
-        description="Something went wrong."
-    )
-        
-    if isinstance(error, errors.InvalidName):
-        embed.description = "Name too long (32 characters or less required)."
-    elif isinstance(error, errors.AlreadyHaveBlahaj):
-        embed.description = "You already have a blahaj!"
-    
-    await interaction.response.send_message(embed=embed, ephemeral=True)
 
 
 @client.tree.command(description="Eat some food.")
@@ -223,25 +220,6 @@ async def eat(interaction: discord.Interaction,
 
     await interaction.response.send_message(embed=embed)
 
-@eat.error
-async def eat_error(interaction: discord.Interaction, 
-                    error: app_commands.AppCommandError):
-    embed = discord.Embed(
-            color=discord.Color.red(),
-            title="Error",
-            description="Something went wrong."
-        )
-    
-    if isinstance(error, errors.InvalidFood):
-        embed.description = "Invalid food."
-    elif isinstance(error, errors.TooLittleOfFood):
-        embed.description = "You don't have enough of that food."
-    elif isinstance(error, errors.InvalidAmount):
-        embed.description = "Invalid amount."
-    elif isinstance(error, errors.NoBlahaj):
-        embed.description = "You don't have a blahaj!"
-
-    await interaction.response.send_message(embed=embed, ephemeral=True)
 
 
 TOKEN = os.getenv('BOT_TOKEN')
