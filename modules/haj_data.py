@@ -4,7 +4,7 @@ import modules.emojis as emojis
 
 class user_data:
     def __init__(self, *, name : str = None):
-        self.last_access : str = None
+        self.last_bait : str = None
         self.level : int = 0
         self.haj_profile : str = emojis.blahajar['blahaj']
         self.name : str = name

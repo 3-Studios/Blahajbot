@@ -22,6 +22,10 @@ class InvalidFood(InvalidItem):
     pass
 class TooLittleOfFood(TooLittleOfItem):
     pass
+class TooLittleBait(TooLittleOfItem):
+    pass
+class BaitCooldown(BlahajBotError):
+    pass
 
 # Very niche exceptions
 class AlreadyHaveBlahaj(BlahajBotError):
